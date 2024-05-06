@@ -24,7 +24,7 @@ def get_model_parameter_size(model):
     """tbd"""
     size = 0
     for param in model.parameters():
-        size += np.product(param.shape)
+        size += np.prod(param.shape)
     return size
 
 
