@@ -18,7 +18,7 @@ import math
 import numpy as np
 import paddle
 import paddle.nn as nn
-import paddle.fluid as fluid
+import paddle.base as fluid
 import paddle.nn.functional as F
 from .protein_tools import ProteinTokenizer
 from .transformer_block import TransformerEncoder, TransformerEncoderLayer

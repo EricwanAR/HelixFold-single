@@ -8,10 +8,10 @@ from paddle.nn.layer.common import Linear, Dropout
 from paddle.nn.layer.norm import LayerNorm
 from paddle.nn import functional as F
 from paddle import tensor
-from paddle.fluid import layers
-from paddle.fluid.dygraph import Layer, LayerList
-from paddle.fluid.param_attr import ParamAttr
-from paddle.fluid.data_feeder import convert_dtype
+from paddle.base import layers
+from paddle.nn.layer.container import Layer, LayerList
+from paddle.base.param_attr import ParamAttr
+from paddle.base.data_feeder import convert_dtype
 from paddle.distributed.fleet.utils import recompute
 from paddle import nn
 
@@ -158,7 +158,7 @@ class MultiHeadAttention(Layer):
 
         # scale dot product attention
         # TODO(guosheng): use tensor.matmul, however it doesn't support `alpha`
-        product = layers.matmul(
+        product = paddle.matmul(
             x=q, y=k, transpose_y=True, alpha=self.head_dim**-0.5)
         if attn_mask is not None:
             # Support bool or int mask
@@ -359,7 +359,7 @@ class DisentangledSelfAttention(Layer):
         # content->position
         scale = math.sqrt(pos_key_layer.shape[-1] * scale_factor)
 
-        c2p_att = layers.matmul(x=query_layer, y=pos_key_layer, transpose_y=True)
+        c2p_att = paddle.matmul(x=query_layer, y=pos_key_layer, transpose_y=True)
         # Todos: max_pos_len(1024)/2
         attn_span = 512
         c2p_pos = paddle.clip(relative_pos + attn_span, 0, attn_span * 2 - 1)
@@ -373,7 +373,7 @@ class DisentangledSelfAttention(Layer):
             pos_query_layer = paddle.expand(pos_query_layer, shape=[paddle.shape(query_layer)[0], -1, -1, -1])
             scale = math.sqrt(pos_query_layer.shape[-1] * scale_factor)
             p2c_pos = paddle.clip(-relative_pos + attn_span, 0, attn_span * 2 - 1)
-            p2c_att = layers.matmul(x=key_layer, y=pos_query_layer, transpose_y=True)
+            p2c_att = paddle.matmul(x=key_layer, y=pos_query_layer, transpose_y=True)
             p2c_gather_idx = p2c_pos.unsqueeze(0).expand(shape=[paddle.shape(p2c_att)[0], paddle.shape(p2c_att)[1], -1, -1])
             p2c_att = self.gather_4d(p2c_att, index=p2c_gather_idx)
             score = paddle.add(score, paddle.scale(p2c_att, 1/scale))
@@ -393,7 +393,7 @@ class DisentangledSelfAttention(Layer):
 
         scale_factor = 2 if self.only_c2p else 3
         scale = math.sqrt(query_layer.shape[-1] * scale_factor)
-        attention_scores = paddle.scale(layers.matmul(x=query_layer, y=key_layer, transpose_y=True), 1/scale)
+        attention_scores = paddle.scale(paddle.matmul(x=query_layer, y=key_layer, transpose_y=True), 1/scale)
         rel_embeddings = F.dropout(rel_embeddings, p=0.1, training=self.training) 
         rel_att = self.disentangled_attention_bias(query_layer, key_layer, relative_pos, rel_embeddings, scale_factor)
         attention_scores = paddle.add(attention_scores, rel_att)
